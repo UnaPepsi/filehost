@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 var ips = make(map[string]int)
@@ -15,12 +16,13 @@ func IsRateLimited(ip string) bool {
 	}
 	rqs, ok := ips[ip]
 	if !ok{
-		ips[ip] = 1
 		rqs = 1
 		go func() {
+			time.Sleep(time.Second*60)
 			delete(ips,ip)
 		}()
 	}
+	ips[ip]++
 	rqsLimit, err := strconv.Atoi(maxRequests)
 	if err != nil{
 		log.Fatalf("Failed at converting %v into int: %v",maxRequests,err.Error())

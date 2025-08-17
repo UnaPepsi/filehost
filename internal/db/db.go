@@ -111,6 +111,7 @@ func Authenticate(username string, password string, totpCode string) (token stri
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
 		return
 	}
+	defer pool.Close()
 	err = pool.QueryRow(ctx, "SELECT token,totp FROM users WHERE username=$1 AND password=$2",username,password).Scan(&token,&totpSecret)
 	if err != nil {
 		return
@@ -133,6 +134,7 @@ func ValidateToken(token string) (err error){
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
 		return
 	}
+	defer pool.Close()
 	err = pool.QueryRow(ctx, "SELECT token FROM users WHERE token=$1",token).Scan(&token)
 	return
 }
@@ -159,6 +161,7 @@ func Register(username string, password string, totpCode string, passwordRegiste
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
 		return
 	}
+	defer pool.Close()
 	err = pool.QueryRow(ctx,"SELECT username FROM users WHERE username = $1",username).Scan(&usernameFetch)
 	if err == nil {
 		err = errors.New("user already exists")
@@ -188,6 +191,7 @@ func SaveFile(file multipart.File, fileHeader *multipart.FileHeader, token strin
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
 		return
 	}
+	defer pool.Close()
 	err = pool.QueryRow(ctx,"SELECT username FROM users WHERE token = $1",token).Scan(&username)
 	if err != nil{
 		id = -1
@@ -248,9 +252,9 @@ func ServeFile(w *http.ResponseWriter, id int) (err error) {
 		pool, err := pgxpool.New(ctx, pgURL)
 		if err != nil{
 			log.Printf("An error ocurred trying to create pool: %v", err.Error())
-
 			return
 		}
+		defer pool.Close()
         err = pool.QueryRow(ctx,
             `SELECT oid, name, content_type FROM files WHERE id=$1`, id,
         ).Scan(&oid, &name, &contentType)
@@ -318,6 +322,7 @@ func GetFileNames(token string) (ids []int, filenames []string, err error) {
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
 		return
 	}
+	defer pool.Close()
 	sql := `SELECT id, name FROM users
 			JOIN files ON users.username=files.owner
 			WHERE users.token=$1`
