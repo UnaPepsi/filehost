@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+		<title>stupid dashboard</title>
+		<style>
+		h1 {
+				text-align: center;
+		}
+		</style>
+		<body>
+				<h1>Your stupid dashboard</h1>
+				<input type="file" id="fileInput">
+				<button id="upload" type="button" onclick="upload()">Upload stupid attachment</button>
+				<ul id="files">
+				</ul>
+				<script>
+						function getCookie(name) {
+								var match = document.cookie.match(RegExp('(?:^|;\\s*)' + name + '=([^;]*)')); 
+								return match ? match[1] : null;
+						}
+						const token = getCookie("token");
+						if (token == null) {
+								window.location = '/';
+						}
+						window.upload = async () => {
+								const fileInput = document.getElementById("fileInput");
+								if (fileInput.files.length === 0) {
+										alert('Select a file duh!');
+										return;
+								}
+								const formData = new FormData();
+								formData.append('file',fileInput.files[0]);
+								await fetch('/upload', {
+										method: 'POST',
+										headers: {'token': token},
+										body: formData
+								}).then(async resp => {
+										const data = await resp.json();
+										if (!resp.ok){
+												alert('papu hubo un error jajasdjas consula');
+												consule.log(data);
+												return;
+										}
+										alert('File uploaded! file id:' + data.id);
+								}).catch(err => {
+										consule.log(err)
+								});
+						}
+						document.addEventListener("DOMContentLoaded", async () => {
+								await fetch('/files', {
+										method: 'GET',
+										headers: {'token':token}
+								}).then(async resp => {
+										const data = await resp.json();
+										if (!resp.ok){
+												alert("Could not fetch files, check consule");
+												consule.log(data);
+												return;
+										}
+										const ul = document.getElementById("files");
+										for (let i = 0; i < data.ids.length; i++) {
+												let li = document.createElement("li");
+												let a = document.createElement("a");
+												a.href = `/file/${data.ids[i]}`
+												a.textContent = data.filenames[i];
+												li.appendChild(a);
+												ul.appendChild(li);
+										}
+								}).catch(err => {
+										console.log(err);
+								});
+						});
+				</script>
+		</body>
+</html>
