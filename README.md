@@ -13,6 +13,8 @@ i hate being unemployed please gimme a job
     - its the totp secret you use for registering, use google auth or whatever to get the 6 digit code
 - why is the ui garbage
     - i dont care
+- sharex config?
+    - [here](/sharexconfig.txt)
 
 ## contributing
 ...why

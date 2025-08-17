@@ -1,0 +1,13 @@
+{
+  "Version": "17.1.0",
+  "Name": "stupidfilehost",
+  "DestinationType": "ImageUploader, TextUploader, FileUploader",
+  "RequestMethod": "POST",
+  "RequestURL": "https://example.com/upload",
+  "Headers": {
+    "token": "your token goes here"
+  },
+  "Body": "MultipartFormData",
+  "FileFormName": "file",
+  "URL": "https://example.com/file/{json:id}"
+}
