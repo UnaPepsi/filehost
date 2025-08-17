@@ -1,101 +1,74 @@
 <!DOCTYPE html>
 <html>
+
 		<head>
 				<title>stupid file host</title>
+				<link rel="stylesheet" href="styles.css">
 		</head>
-		<style>
-				body{
-						display: flex;
-						justify-content: center;
-						align-items: center;
-						height: 100vh;
-						magin: 0;
-						background: #111;
-				}
-				div {
-						display: flex;
-						align-items: center;
-						justify-content: center;
-						flex-direction: column;
-						height: 30vh;
-						width: 10vw;
-						text-align: center;
-						background: #2000C3;
-						border-radius: 20px;
-				}
-				h2 {
-						color: white;
-				}
-				input {
-						border-radius: 10px;
-						height: 20px;
-						margin: 10px;
-				}
-				button {
-						border-radius: 10px;
-						width: 10vh;
-						height: 5vh;
-				}
-		</style>
-		<body>
-				<div>
-						<h2>Login</h2>
-						<form>
-								<input type="text" placeholder="Username" id="username" required>
-								<input type="password" placeholder="Password" id="password" required>
-								<input type="text" placeholder="TOTP" id="totp" required>
-								<button id="login-button" type="button" onclick="login()">Login</button>
-								<button type="button" onclick="window.location='/signup'">Signup</button>
-						</form>
-				</div>
-				<script>
-						//https://stackoverflow.com/questions/5968196/how-do-i-check-if-a-cookie-exists
-						function getCookie(name) {
-								var match = document.cookie.match(RegExp('(?:^|;\\s*)' + name + '=([^;]*)')); 
-								return match ? match[1] : null;
-						}
-						let token = getCookie('token')
-						if (token != null) {
-								fetch('/validatetoken', {
-										method: 'POST',
-										headers: {'token':token}
-								},
-								).then(resp => {
-										if (!resp.ok){
-												document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
-												return
-										}
-										window.location = '/dashboard'
 
-								}).catch(err => {
-										console.log(err)
-								})
-						}
-						const login = async () => {
-								await fetch('/auth', {
-										method: 'POST',
-										headers: {
-												'username': document.getElementById('username').value,
-												'password': document.getElementById('password').value,
-												'totp': document.getElementById('totp').value
-										},
-								}).then(async resp => {
-										if (!resp.ok){
-												console.log(await resp.json())
-												alert('An error ocurred, check console log')
-												return
-										}
-										const data = await resp.json()
-										console.log(data)
-										let expireDate = new Date();
-										expireDate.setTime(expireDate.getTime()+1000*60*60*24*365) //1 year
-										document.cookie = "token=" + data.token + "; expires=" + expireDate.toUTCString() + ";"
-										alert('Login success')
-								}).catch(err => {
-										console.log(err)
-								})
+	<body>
 
-						}
-				</script>
-		</body>
+		<div class="container">
+			<div class="content">
+				<h2>Login</h2>
+				<form>
+					<input type="text" placeholder="Username" id="username" required>
+					<input type="password" placeholder="Password" id="password" required>
+					<input type="text" placeholder="TOTP" id="totp" required>
+					<button id="login-button" type="button" onclick="login()">Login</button>
+					<button type="button" onclick="window.location='/signup'">Signup</button>
+				</form>
+			</div>
+		</div>
+
+	</body>
 </html>
+
+<script>
+	//https://stackoverflow.com/questions/5968196/how-do-i-check-if-a-cookie-exists
+	function getCookie(name) {
+		var match = document.cookie.match(RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+		return match ? match[1] : null;
+	}
+	let token = getCookie('token')
+	if (token != null) {
+		fetch('/validatetoken', {
+			method: 'POST',
+			headers: {
+				'token': token
+			}
+		}, ).then(resp => {
+			if (!resp.ok) {
+				document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
+				return
+			}
+			window.location = '/dashboard'
+		}).catch(err => {
+			console.log(err)
+		})
+	}
+	const login = async () => {
+		await fetch('/auth', {
+			method: 'POST',
+			headers: {
+				'username': document.getElementById('username').value,
+				'password': document.getElementById('password').value,
+				'totp': document.getElementById('totp').value
+			},
+		}).then(async resp => {
+			if (!resp.ok) {
+				console.log(await resp.json())
+				alert('An error ocurred, check console log')
+				return
+			}
+			const data = await resp.json()
+			console.log(data)
+			let expireDate = new Date();
+			expireDate.setTime(expireDate.getTime() + 1000 * 60 * 60 * 24 * 365) //1 year
+			document.cookie = "token=" + data.token + "; expires=" + expireDate.toUTCString() + ";"
+			alert('Login success')
+		}).catch(err => {
+			console.log(err)
+		})
+	}
+</script>
