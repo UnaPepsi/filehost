@@ -67,6 +67,7 @@
 			expireDate.setTime(expireDate.getTime() + 1000 * 60 * 60 * 24 * 365) //1 year
 			document.cookie = "token=" + data.token + "; expires=" + expireDate.toUTCString() + ";"
 			alert('Login success')
+			window.location = '/dashboard'
 		}).catch(err => {
 			console.log(err)
 		})
