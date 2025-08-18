@@ -11,8 +11,6 @@ i hate being unemployed please gimme a job
 ## faq
 - the heck is is totp_secret_register
     - its the totp secret you use for registering, use google auth or whatever to get the 6 digit code
-- why is the ui garbage
-    - i dont care
 - sharex config?
     - [here](/sharexconfig.txt)
 

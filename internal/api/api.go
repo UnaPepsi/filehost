@@ -25,6 +25,7 @@ func Listen() error {
 	}
 	maxUploadSize <<= 20
 	mux.HandleFunc("GET /", root)
+	mux.HandleFunc("GET /styles.css", styles)
 	mux.HandleFunc("GET /signup", signup)
 	mux.HandleFunc("GET /dashboard", dashboard)
 	mux.HandleFunc("GET /file/{id}", fetchFile)
@@ -38,6 +39,9 @@ func Listen() error {
 
 func root(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w,r,"internal/webfiles/root.html")
+}
+func styles(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w,r,"internal/webfiles/styles.css")
 }
 func signup(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w,r,"internal/webfiles/signup.html")
