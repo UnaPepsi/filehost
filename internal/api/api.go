@@ -34,6 +34,7 @@ func Listen() error {
 	mux.HandleFunc("POST /validatetoken", validateToken)
 	mux.HandleFunc("POST /register", register)
 	mux.HandleFunc("POST /upload", upload)
+	mux.HandleFunc("POST /delete", deleteFile)
 	return http.ListenAndServe("0.0.0.0:80", mux)
 }
 
@@ -175,4 +176,30 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := responses.UploadedFilesResponse{Ids:ids,Filenames:filenames}
 	responses.SendResponse(&resp,&w,http.StatusOK)
+}
+func deleteFile(w http.ResponseWriter, r *http.Request) {
+	if IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
+		return
+	}
+	token := r.Header.Get("token")
+	fileID := r.URL.Query().Get("id")
+	if fileID == "" {
+		e := responses.ErrorResponse{Message: "Missing ID", Ratelimit: 0}
+		responses.SendResponse(&e,&w,http.StatusUnprocessableEntity)
+		return
+	}
+	id, err := strconv.Atoi(fileID)
+	if err != nil {
+		e := responses.ErrorResponse{Message: "Bad ID", Ratelimit: 0}
+		responses.SendResponse(&e,&w,http.StatusUnprocessableEntity)
+		return
+	}
+	if err = db.DeleteFile(id,token); err != nil{
+		e := responses.ErrorResponse{Message: "Not authorized", Ratelimit: 0}
+		responses.SendResponse(&e,&w,http.StatusUnauthorized)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

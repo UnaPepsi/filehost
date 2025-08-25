@@ -48,13 +48,26 @@
 		}).then(async resp => {
 			const data = await resp.json();
 			if (!resp.ok) {
-				alert('papu hubo un error jajasdjas consula');
-				consule.log(data);
+				alert('papu hubo un error jajasdjas consola');
+				console.log(data);
 				return;
 			}
 			alert('File uploaded! file id:' + data.id);
+			const ul = document.getElementById("files");
+			let id = data.id;
+			let li = document.createElement("li");
+			li.id = `item-${id}`;
+			let a = document.createElement("a");
+			a.href = `/file/${id}`
+			a.textContent = fileInput.files[0].name;
+			li.appendChild(a);
+			let btn = document.createElement("button");
+			btn.textContent = "Delete";
+			btn.onclick = async () => await deleteFile(id);
+			li.appendChild(btn);
+			ul.appendChild(li);
 		}).catch(err => {
-			consule.log(err)
+			console.log(err)
 		});
 	}
 	document.addEventListener("DOMContentLoaded", async () => {
@@ -66,21 +79,47 @@
 		}).then(async resp => {
 			const data = await resp.json();
 			if (!resp.ok) {
-				alert("Could not fetch files, check consule");
-				consule.log(data);
+				alert("Could not fetch files, check console");
+				console.log(data);
 				return;
 			}
 			const ul = document.getElementById("files");
 			for (let i = 0; i < data.ids.length; i++) {
-				let li = document.createElement("li");
-				let a = document.createElement("a");
-				a.href = `/file/${data.ids[i]}`
-				a.textContent = data.filenames[i];
-				li.appendChild(a);
-				ul.appendChild(li);
+			    let id = data.ids[i];
+			    let li = document.createElement("li");
+				li.id = `item-${id}`;
+			    let a = document.createElement("a");
+			    a.href = `/file/${id}`
+			    a.textContent = data.filenames[i];
+			    li.appendChild(a);
+			    let btn = document.createElement("button");
+			    btn.textContent = "Delete";
+			    btn.onclick = async () => await deleteFile(id);
+			    li.appendChild(btn);
+			    ul.appendChild(li);
 			}
 		}).catch(err => {
 			console.log(err);
 		});
 	});
+	async function deleteFile(id) {
+	    await fetch(`/delete?id=${id}`, {
+	        method: 'POST',
+	        headers: {
+	            'token': token
+	        }
+	    }).then(async resp => {
+	        if (!resp.ok) {
+	            const data = await resp.json();
+	            alert("Could not delete file, check console");
+	            console.log(data);
+	            return;
+	        }
+	        let li = document.getElementById(`item-${id}`);
+	        li.remove();
+	        alert(`File ${id} removed!`);
+	    }).catch(err => {
+	        console.log(err);
+	    });
+	}
 </script>

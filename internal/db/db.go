@@ -247,74 +247,74 @@ func SaveFile(file multipart.File, fileHeader *multipart.FileHeader, token strin
 }
 
 func ServeFile(w *http.ResponseWriter, id int) (err error) {
-        var oid uint32
-        var name, contentType string
-		pool, err := pgxpool.New(ctx, pgURL)
-		if err != nil{
-			log.Printf("An error ocurred trying to create pool: %v", err.Error())
-			return
-		}
-		defer pool.Close()
-        err = pool.QueryRow(ctx,
-            `SELECT oid, name, content_type FROM files WHERE id=$1`, id,
-        ).Scan(&oid, &name, &contentType)
-        if err != nil {
-			e := responses.ErrorResponse{Message: "File not found", Ratelimit:0}
-			responses.SendResponse(&e, w, http.StatusNotFound)
-            return
-        }
-        tx, err := pool.Begin(ctx)
-        if err != nil {
-			log.Printf("An error ocurred during transaction: %v", err.Error())
-			e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-			responses.SendResponse(&e, w, http.StatusInternalServerError)
-            return
-        }
-        defer tx.Rollback(ctx)
+	var oid uint32
+	var name, contentType string
+	pool, err := pgxpool.New(ctx, pgURL)
+	if err != nil{
+		log.Printf("An error ocurred trying to create pool: %v", err.Error())
+		return
+	}
+	defer pool.Close()
+	err = pool.QueryRow(ctx,
+        `SELECT oid, name, content_type FROM files WHERE id=$1`, id,
+    ).Scan(&oid, &name, &contentType)
+    if err != nil {
+		e := responses.ErrorResponse{Message: "File not found", Ratelimit:0}
+		responses.SendResponse(&e, w, http.StatusNotFound)
+        return
+    }
+    tx, err := pool.Begin(ctx)
+    if err != nil {
+		log.Printf("An error ocurred during transaction: %v", err.Error())
+		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
+		responses.SendResponse(&e, w, http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback(ctx)
 
-        var fd int
-        err = tx.QueryRow(ctx, "SELECT lo_open($1, 262144)", oid).Scan(&fd) // 262144 = INV_READ
-        if err != nil {
-			log.Printf("An error ocurred trying to open LargeObject: %v", err.Error())
-			e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-			responses.SendResponse(&e, w, http.StatusInternalServerError)
-            return
-        }
-        buf := make([]byte, 32*1024) // 32 KB
-        (*w).Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
-        if contentType != "" {
-            (*w).Header().Set("Content-Type", contentType)
-        } else {
-            (*w).Header().Set("Content-Type", "application/octet-stream")
-        }
+    var fd int
+    err = tx.QueryRow(ctx, "SELECT lo_open($1, 262144)", oid).Scan(&fd) // 262144 = INV_READ
+    if err != nil {
+		log.Printf("An error ocurred trying to open LargeObject: %v", err.Error())
+		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
+		responses.SendResponse(&e, w, http.StatusInternalServerError)
+        return
+    }
+    buf := make([]byte, 32*1024) // 32 KB
+    (*w).Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+    if contentType != "" {
+        (*w).Header().Set("Content-Type", contentType)
+    } else {
+        (*w).Header().Set("Content-Type", "application/octet-stream")
+    }
 
-        for {
-            var chunk []byte
-            err = tx.QueryRow(ctx, "SELECT loread($1, $2)", fd, len(buf)).Scan(&chunk)
-            if err != nil {
-                if err == io.EOF {
-                    break
-                }
-				log.Printf("An error ocurred trying to read file: %v", err.Error())
-				e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-				responses.SendResponse(&e, w, http.StatusInternalServerError)
-                return
-            }
-            if len(chunk) == 0 {
+    for {
+        var chunk []byte
+        err = tx.QueryRow(ctx, "SELECT loread($1, $2)", fd, len(buf)).Scan(&chunk)
+        if err != nil {
+            if err == io.EOF {
                 break
             }
-            (*w).Write(chunk)
-        }
-        _, err = tx.Exec(ctx, "SELECT lo_close($1)", fd)
-        if err != nil {
-			log.Printf("An error ocurred trying to close file: %v", err.Error())
+			log.Printf("An error ocurred trying to read file: %v", err.Error())
 			e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
 			responses.SendResponse(&e, w, http.StatusInternalServerError)
             return
         }
-
-        return tx.Commit(ctx)
+        if len(chunk) == 0 {
+            break
+        }
+        (*w).Write(chunk)
     }
+    _, err = tx.Exec(ctx, "SELECT lo_close($1)", fd)
+    if err != nil {
+		log.Printf("An error ocurred trying to close file: %v", err.Error())
+		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
+		responses.SendResponse(&e, w, http.StatusInternalServerError)
+        return
+    }
+
+	return tx.Commit(ctx)
+}
 
 func GetFileNames(token string) (ids []int, filenames []string, err error) {
 	pool, err := pgxpool.New(ctx, pgURL)
@@ -339,4 +339,42 @@ func GetFileNames(token string) (ids []int, filenames []string, err error) {
 		filenames = append(filenames, filename)
 	}
 	return
+}
+
+func DeleteFile(id int, token string) (err error){
+	pool, err := pgxpool.New(ctx, pgURL)
+	if err != nil{
+		log.Printf("An error ocurred trying to create pool: %v", err.Error())
+		return
+	}
+	defer pool.Close()
+	var username string
+	err = pool.QueryRow(ctx,"SELECT username FROM users WHERE token = $1",token).Scan(&username)
+	if err != nil {
+		return
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil{
+		log.Printf("An error ocurred while starting transaction: %v",err.Error())
+		return
+	}
+	defer tx.Rollback(ctx)
+	var oid uint32
+	err = tx.QueryRow(ctx, "SELECT oid FROM files WHERE id = $1 AND owner = $2",id,username).Scan(&oid)
+	if err != nil {
+		log.Printf("An error ocurred while fetching oid: %v", err.Error())
+		return
+	}
+
+	_,err = tx.Exec(ctx, "SELECT lo_unlink($1)",oid)
+	if err != nil {
+		log.Printf("Could not unlink LO: %v", err.Error())
+		return
+	}
+	_,err = tx.Exec(ctx, "DELETE FROM files WHERE id = $1 AND owner = $2",id,username)
+	if err != nil {
+		log.Printf("Could not delete metadata: %v", err.Error())
+		return
+	}
+	return tx.Commit(ctx)
 }
