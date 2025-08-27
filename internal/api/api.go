@@ -2,6 +2,7 @@ package api
 
 import (
 	"filehost/internal/db"
+	"filehost/internal/ratelimit"
 	"filehost/internal/responses"
 	"fmt"
 	"log"
@@ -52,8 +53,8 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}
@@ -74,8 +75,8 @@ func auth(w http.ResponseWriter, r *http.Request) {
 } 
 
 func validateToken(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}
@@ -90,8 +91,8 @@ func validateToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 func register(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}
@@ -113,8 +114,8 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func upload(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}
@@ -147,23 +148,12 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchFile(w http.ResponseWriter, r *http.Request){
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
-		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
-		return
-	}
-	id, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil{
-		e := responses.ErrorResponse{Message: "Invalid ID", Ratelimit: 0}
-		responses.SendResponse(&e,&w,http.StatusBadRequest)
-		return
-	}
-	db.ServeFile(&w, id)
+	db.ServeFile(&w, r)
 }
 
 func getFiles(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}
@@ -178,8 +168,8 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 	responses.SendResponse(&resp,&w,http.StatusOK)
 }
 func deleteFile(w http.ResponseWriter, r *http.Request) {
-	if IsRateLimited(r.URL.Hostname()){
-		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: 60} //idc brah
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
 	}

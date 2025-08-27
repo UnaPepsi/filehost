@@ -8,16 +8,20 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"filehost/internal/responses"
+	"filehost/internal/ratelimit"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"math/big"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pquerna/otp/totp"
 )
@@ -26,7 +30,35 @@ var pgURL string
 var ctx context.Context
 var totpSecretRegister string
 var passwordRegisterCode string
+var cats map[string][]byte
 func Initialize() (err error) {
+	cats = make(map[string][]byte)
+	filepath.WalkDir("internal/cats/", func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return err
+		}
+		if err != nil {
+			log.Fatalf("Error trying to check cat: %v. %v",d.Name(),err.Error())
+			return err
+		}
+		f, err := os.Open(path)
+		catName := strings.Split(d.Name(),".")[0]
+		if err != nil {
+			log.Fatalf("Coult not load cat: %v. %v",catName,err.Error())
+			return err
+		}
+		fStat, err := f.Stat()
+		if err != nil {
+			log.Fatalf("Could not get cat info: %v. %v",catName,err.Error())
+			return err
+		}
+		cats[catName] = make([]byte, fStat.Size())
+		if _, err = f.Read(cats[catName]); err != nil {
+			log.Fatalf("Could not read contents of cat: %v. %v",catName,err.Error())
+			return err
+		}
+		return err
+	})
 	ctx = context.Background()
 	var exists bool
 	if pgURL,exists = os.LookupEnv("PG_URL"); !exists {
@@ -246,12 +278,25 @@ func SaveFile(file multipart.File, fileHeader *multipart.FileHeader, token strin
     return id, tx.Commit(ctx)
 }
 
-func ServeFile(w *http.ResponseWriter, id int) (err error) {
+func ServeFile(w *http.ResponseWriter, r *http.Request) (err error) {
+	if ratelimit.IsRateLimited(r.URL.Hostname()){
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["429"])
+		return
+	}
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil{
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["422"])
+		return
+	}
 	var oid uint32
 	var name, contentType string
 	pool, err := pgxpool.New(ctx, pgURL)
 	if err != nil{
 		log.Printf("An error ocurred trying to create pool: %v", err.Error())
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["500"])
 		return
 	}
 	defer pool.Close()
@@ -259,15 +304,15 @@ func ServeFile(w *http.ResponseWriter, id int) (err error) {
         `SELECT oid, name, content_type FROM files WHERE id=$1`, id,
     ).Scan(&oid, &name, &contentType)
     if err != nil {
-		e := responses.ErrorResponse{Message: "File not found", Ratelimit:0}
-		responses.SendResponse(&e, w, http.StatusNotFound)
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["404"])
         return
     }
     tx, err := pool.Begin(ctx)
     if err != nil {
 		log.Printf("An error ocurred during transaction: %v", err.Error())
-		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-		responses.SendResponse(&e, w, http.StatusInternalServerError)
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["500"])
         return
     }
     defer tx.Rollback(ctx)
@@ -276,12 +321,12 @@ func ServeFile(w *http.ResponseWriter, id int) (err error) {
     err = tx.QueryRow(ctx, "SELECT lo_open($1, 262144)", oid).Scan(&fd) // 262144 = INV_READ
     if err != nil {
 		log.Printf("An error ocurred trying to open LargeObject: %v", err.Error())
-		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-		responses.SendResponse(&e, w, http.StatusInternalServerError)
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["500"])
         return
     }
     buf := make([]byte, 32*1024) // 32 KB
-    (*w).Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+    (*w).Header().Set("Content-Disposition", `inline; filename="`+name+`"`)
     if contentType != "" {
         (*w).Header().Set("Content-Type", contentType)
     } else {
@@ -296,8 +341,8 @@ func ServeFile(w *http.ResponseWriter, id int) (err error) {
                 break
             }
 			log.Printf("An error ocurred trying to read file: %v", err.Error())
-			e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-			responses.SendResponse(&e, w, http.StatusInternalServerError)
+			(*w).Header().Set("Content-Type","image/jpeg")
+			(*w).Write(cats["500"])
             return
         }
         if len(chunk) == 0 {
@@ -308,8 +353,8 @@ func ServeFile(w *http.ResponseWriter, id int) (err error) {
     _, err = tx.Exec(ctx, "SELECT lo_close($1)", fd)
     if err != nil {
 		log.Printf("An error ocurred trying to close file: %v", err.Error())
-		e := responses.ErrorResponse{Message: "Something wrong happened D:", Ratelimit:0}
-		responses.SendResponse(&e, w, http.StatusInternalServerError)
+		(*w).Header().Set("Content-Type","image/jpeg")
+		(*w).Write(cats["500"])
         return
     }
 
