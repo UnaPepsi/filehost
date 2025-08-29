@@ -122,7 +122,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("token")
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		e := responses.ErrorResponse{Message: fmt.Sprintf("File too large. Max size of %d MB",maxUploadSize), Ratelimit: 0}
+		e := responses.ErrorResponse{Message: fmt.Sprintf("File too large. Max size of %d MB",maxUploadSize >> 20), Ratelimit: 0}
 		responses.SendResponse(&e,&w,http.StatusRequestEntityTooLarge)
 		return
 	}
