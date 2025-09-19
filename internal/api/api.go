@@ -36,6 +36,7 @@ func Listen() error {
 	mux.HandleFunc("POST /register", register)
 	mux.HandleFunc("POST /upload", upload)
 	mux.HandleFunc("POST /delete", deleteFile)
+	log.Println("Remember to set X-Forwarded-For and X-Real-IP in your reverse proxy!")
 	return http.ListenAndServe("0.0.0.0:80", mux)
 }
 
@@ -53,7 +54,7 @@ func dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
@@ -75,7 +76,7 @@ func auth(w http.ResponseWriter, r *http.Request) {
 } 
 
 func validateToken(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
@@ -91,7 +92,7 @@ func validateToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 func register(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
@@ -114,7 +115,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func upload(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
@@ -152,7 +153,7 @@ func fetchFile(w http.ResponseWriter, r *http.Request){
 }
 
 func getFiles(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return
@@ -168,7 +169,7 @@ func getFiles(w http.ResponseWriter, r *http.Request) {
 	responses.SendResponse(&resp,&w,http.StatusOK)
 }
 func deleteFile(w http.ResponseWriter, r *http.Request) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		e := responses.ErrorResponse{Message: "Ratelimited", Ratelimit: ratelimit.MaxRequests()} //idc brah
 		responses.SendResponse(&e,&w,http.StatusTooManyRequests)
 		return

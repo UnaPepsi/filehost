@@ -279,7 +279,7 @@ func SaveFile(file multipart.File, fileHeader *multipart.FileHeader, token strin
 }
 
 func ServeFile(w *http.ResponseWriter, r *http.Request) (err error) {
-	if ratelimit.IsRateLimited(r.URL.Hostname()){
+	if ratelimit.IsRateLimited(r){
 		(*w).Header().Set("Content-Type","image/jpeg")
 		(*w).Write(cats["429"])
 		return

@@ -2,8 +2,11 @@ package ratelimit
 
 import (
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,7 +27,18 @@ func init(){
 func MaxRequests() int {
 	return maxRequests
 }
-func IsRateLimited(ip string) bool {
+func getIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return strings.TrimSpace(strings.Split(xff,",")[0])
+	}
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return xrip
+	}
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return ip
+}
+func IsRateLimited(r *http.Request) bool {
+	ip := getIP(r)
 	rqs, ok := ips[ip]
 	if !ok{
 		rqs = 1

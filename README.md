@@ -3,6 +3,7 @@ btw this is a direct competitor to zipline frfr<br>
 i hate being unemployed please gimme a job
 
 ## how to run
+- if using reverse proxy set x-forwarded-for and x-real-ip
 - make an .env file
 - set the env variables that you see on compose.yaml
 - run `docker compose up --build`
